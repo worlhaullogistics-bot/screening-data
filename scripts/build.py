@@ -9,7 +9,7 @@ csv.field_size_limit(10**9)
 CSL_URL = 'https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.csv'
 FMC_URL = 'https://www2.fmc.gov/OTI/reports/OTI_List.xlsx'
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'data'
-STOP = set('LLC L L C INC INCORPORATED LTD LIMITED CO COMPANY CORP CORPORATION SA SAS SRL SPA AG GMBH BV NV PLC PTE PVT LP LLP DE CV RL S A THE AND OF Y E DBA'.split())
+STOP = set('LLC L L C INC INCORPORATED LTD LIMITED CO COMPANY CORP CORPORATION SA SAS SRL SPA AG GMBH BV NV PLC PTE PVT LP LLP DE CV RL S A THE AND OF Y E DBA LIABILITY OBSHCHESTVO OGRANICHENNOI OGRANICHENNOY OTVETSTVENNOSTYU OOO AO PAO ZAO OAO TOO JSC FZE FZCO FZ LLC_'.split())
 GENERIC = set('LOGISTICS SHIPPING TRADING TRADE INTERNATIONAL INTL FREIGHT CARGO EXPRESS SERVICES SERVICE TRANSPORT TRANSPORTATION LINE LINES GLOBAL AIR SEA OCEAN GROUP HOLDING HOLDINGS ENTERPRISES ENTERPRISE INDUSTRIES INDUSTRY IMPORT EXPORT FORWARDING FORWARDERS FORWARDER AGENCY AGENCIES WORLDWIDE CORPORATE MARINE MARITIME SUPPLY CHAIN SOLUTIONS NETWORK TECHNOLOGY TECHNOLOGIES TECH INSTITUTE STOCK JOINT ELECTRONICS ELECTRONIC SCIENCE SCIENTIFIC RESEARCH DEVELOPMENT ENGINEERING EQUIPMENT MACHINERY INDUSTRIAL MANUFACTURING DEFENSE DEFENCE INVESTMENT INVESTMENTS BANK OIL GAS ENERGY CONSTRUCTION PETROLEUM CHEMICAL CHEMICALS MATERIALS METAL METALS SYSTEMS PLANT FACTORY STATE NATIONAL UNIVERSITY'.split())
 def norm(s):
     s = unicodedata.normalize('NFD', str(s or '')); s = ''.join(c for c in s if not unicodedata.combining(c))
@@ -17,9 +17,9 @@ def norm(s):
     return re.sub(r'\s+', ' ', re.sub(r'[^A-Z0-9 ]', ' ', s)).strip()
 def tokens(s): return [t for t in norm(s).split() if t not in STOP]
 def keys(s):  # shard keys for a name: first 3 letters of each distinctive word
-    ks = {t[:3].lower() for t in tokens(s) if len(t) >= 3 and t not in GENERIC and not t.isdigit()}
+    ks = {t[:4].lower() for t in tokens(s) if len(t) >= 3 and t not in GENERIC and not t.isdigit()}
     if not ks:
-        ks = {t[:3].lower() for t in tokens(s) if len(t) >= 3 and not t.isdigit()}
+        ks = {t[:4].lower() for t in tokens(s) if len(t) >= 3 and not t.isdigit()}
     return ks
 def get(url):
     req = urllib.request.Request(url, headers={'User-Agent': 'screening-data builder (github.com/worlhaullogistics-bot/screening-data)'})
