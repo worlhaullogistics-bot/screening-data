@@ -22,7 +22,7 @@ def keys(s):  # shard keys for a name: first 3 letters of each distinctive word
         ks = {t[:3].lower() for t in tokens(s) if len(t) >= 3 and not t.isdigit()}
     return ks
 def get(url):
-    req = urllib.request.Request(url, headers={'user-agent': 'Mozilla/5.0 (screening-data builder; github actions)'})
+    req = urllib.request.Request(url, headers={'User-Agent': 'screening-data builder (github.com/worlhaullogistics-bot/screening-data)'})
     with urllib.request.urlopen(req, timeout=180) as r: return r.read()
 def short_src(s):
     s = str(s or '')
@@ -85,11 +85,30 @@ def main():
     csl_raw = open(os.environ['CSL_FILE'], 'rb').read() if os.environ.get('CSL_FILE') else get(CSL_URL)
     shards, n = build_csl(csl_raw); meta['csl_entries'] = n; meta['csl_shards'] = len(shards)
     for k, v in shards.items(): write(f'{tmp}/csl/{k}.json', sorted(v.values(), key=lambda e: (e.get('a') or e['n'], e['id'])))
-    fmc_raw = open(os.environ['FMC_FILE'], 'rb').read() if os.environ.get('FMC_FILE') else get(FMC_URL)
-    ids, names, m = build_fmc(fmc_raw); meta['fmc_entries'] = m
-    for k, v in ids.items(): write(f'{tmp}/fmc/id/{k}.json', v)
-    for k, v in names.items(): write(f'{tmp}/fmc/name/{k}.json', sorted(v.values(), key=lambda e: (e['m'], e['org'])))
-    if n < 1000 or m < 1000: sys.exit(f'Too few entries (csl {n}, fmc {m}); keeping the previous data.')
+    if n < 1000: sys.exit(f'Too few sanctions entries ({n}); keeping the previous data.')
+    # FMC: the site's own download when it allows it; otherwise the copy a person downloaded from www2.fmc.gov/oti
+    # ("Download OTI List") and uploaded to sources/OTI_List.xlsx in this repository.
+    m = 0
+    try:
+        if os.environ.get('FMC_FILE'): fmc_raw = open(os.environ['FMC_FILE'], 'rb').read()
+        else:
+            try: fmc_raw = get(FMC_URL)
+            except Exception as e:
+                print('FMC download not allowed from here:', e)
+                fmc_raw = open('sources/OTI_List.xlsx', 'rb').read(); print('Using sources/OTI_List.xlsx (downloaded by hand)')
+                meta['fmc_source'] = 'sources/OTI_List.xlsx, uploaded ' + datetime.datetime.fromtimestamp(os.path.getmtime('sources/OTI_List.xlsx'), datetime.timezone.utc).strftime('%Y-%m-%d')
+        ids, names, m = build_fmc(fmc_raw)
+    except Exception as e:
+        print('FMC list not available:', e)
+    if m >= 1000:
+        for k, v in ids.items(): write(f'{tmp}/fmc/id/{k}.json', v)
+        for k, v in names.items(): write(f'{tmp}/fmc/name/{k}.json', sorted(v.values(), key=lambda e: (e['m'], e['org'])))
+        meta['fmc_entries'] = m; meta['fmc_built'] = meta['built']
+    elif os.path.isdir(f'{OUT}/fmc'):  # keep the last good FMC files
+        shutil.copytree(f'{OUT}/fmc', f'{tmp}/fmc')
+        old = json.load(open(f'{OUT}/meta.json')) if os.path.exists(f'{OUT}/meta.json') else {}
+        meta['fmc_entries'] = old.get('fmc_entries', 0); meta['fmc_built'] = old.get('fmc_built')
+    else: meta['fmc_entries'] = 0
     write(f'{tmp}/meta.json', meta)
     shutil.rmtree(OUT, ignore_errors=True); os.rename(tmp, OUT)
     sizes = sorted((os.path.getsize(os.path.join(dp, f)), os.path.join(dp, f)) for dp, _, fs in os.walk(OUT) for f in fs)
