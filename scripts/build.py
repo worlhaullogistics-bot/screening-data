@@ -5,6 +5,7 @@ can check one company in a few milliseconds:
 Output: data/meta.json, data/csl/<abc>.json, data/fmc/id/<nn>.json, data/fmc/name/<abc>.json
 The matching rules (norm, tokens) must stay identical to the worker's (worldhaul-setup worker/src.js)."""
 import csv, io, json, os, re, sys, unicodedata, urllib.request, datetime, collections, shutil
+csv.field_size_limit(10**9)
 CSL_URL = 'https://data.trade.gov/downloadable_consolidated_screening_list/v1/consolidated.csv'
 FMC_URL = 'https://www2.fmc.gov/OTI/reports/OTI_List.xlsx'
 OUT = sys.argv[1] if len(sys.argv) > 1 else 'data'
